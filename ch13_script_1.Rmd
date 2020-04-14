@@ -39,29 +39,78 @@ Explore the data and see the variables for yourself. See if anything looks stran
 
 Create a scatterplot of our outcome variable `dvote` and a continuous predictor `income`. 
 
+```{r}
+
+ggplot(nes, aes(income, dvote)) + geom_jitter()
+
+```
+
+
 You might notice `geom_point()` doesn't give an intuitive graph since the points are so distinct. Try `geom_jitter()` instead. Use the arguments `alpha` and `height` to improve your plot.
 
 Draw a regression line through this jittered data using `geom_smooth()`.
 
+```{r}
+
+ggplot(nes, aes(income, dvote)) + geom_jitter(alpha = 0.4) + geom_smooth(method = lm) 
+
+```
+
+
 Discuss whether a linear regression is appropriate for this. Is there a possibility of model predicting greater than 1 or less than 0 probability for `dvote`?
+
+dvote is discrete - 0 or 1, and a linear regression will give points outside that so not good
 
 
 # Scene 2
 
 **Prompt:** Let's fit a logistic regression model in which `dvote` is the dependent variable and `gender` and `income` are the independent variables. Do not add an interaction term. Name the model `model_1`. As we’ll see, the syntax for running a logistic regression in R is very similar to that for running a linear regression. In fact, we’ll follow the same basic steps:
 
+```{r}
+
+model_1 <- glm(dvote ~ gender + income, binomial, data = nes)
+
+```
+
+
 We first fit the logistic regression model using the `glm(y ~ x1 + x2, family, data)` function and save it as `model_1`.  
 
 We get the regression parameter estimates by applying the `tidy()` function from the broom package to `model_1`. Print the `term`, `estimate`, `conf.low`, and `conf.high` columns.  
 
+```{r}
+
+s2 <- model_1 %>% 
+  tidy(conf.int = T) %>%
+  print(term, estimate, conf.high, conf.low)
+
+```
+
+
 Interpret the `estimate` column for "gendermale" and "income". Use the [divide-by-four rule](https://davidkane9.github.io/PPBDS/13-classification.html#one-categorical-explanatory-variable).
+
+
+An increse in income group by one unit leads to an increse in dvote of -0.288 / 4 
+
 
 Provide a Bayesian and a Frequentist interpretation of the confidence intervals for the estimate of the coefficient for `income`.
 
+
+True value vs. if you ran it infinite times thats the 95 confidence 
+
+
 Explain to your non-mathematical boss the relationship between income and preference for the Democratic candidate. Write this out as a sentence. Harder than it seems, isn't it?
+
+
+income goes up, love for dems goes down
+
 
 Optional (very hard!): Interpret the `estimate` for (Intercept). What does it mean? Think back to how we interpreted regression intercepts in the last two weeks. You *might* need to use the `qlogis()` function.
 
+```{r}
+
+qlogis(0.7471462)
+
+```
 
 
 
@@ -71,11 +120,27 @@ Optional (very hard!): Interpret the `estimate` for (Intercept). What does it me
 
 Use `augment()` from the **broom** package to get predictions from our model. You will need to set the `type.predict` and `data` arguments correctly.
 
+```{r}
+
+s3 <- model_1 %>% 
+  augment(type.predict = "responce", data = nes)
+
+```
+
+
 What does the `.fitted` column means?
+
+the value on the regression line of x for a given y
 
 Why does `.fitted` have the same value for every male with income = 3? (First, show that this is in fact true. Then explain why?)
 
+```{r}
 
+s3 %>% filter(income == 3, gender == "male")
+
+```
+
+its a value based off of the regression line so it has to be the same for each income groups
 
 # Scene 4
 
@@ -133,6 +198,37 @@ Interpret the plot.
 # Challenge Problem 1
 
 **Prompt:** Replicate this graph: https://rpubs.com/Seeam2590/594856 
+
+
+```{r}
+
+s2 %>% filter(term == 'gendermale') %>% qlogis(estimate, scale = 1)
+
+```
+
+
+```{r}
+
+
+ggplot(s3, aes(year, .resid)) + geom_point() + facet_wrap(~ gender) + geom_smooth(method = lm)
+
+```
+
+```{r}
+
+nes %>%
+  group_by(year, gender) %>%
+  summarize(perc_dem_win = mean(dvote),
+            emplogit = qlogis(perc_dem_win)) %>%
+  ggplot(aes(x = year, y = emplogit)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(x = "Year",
+       y = "Empirical logits") +
+  theme_classic() +
+  facet_wrap(~ gender)
+
+```
 
 
 
